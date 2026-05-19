@@ -16,6 +16,10 @@ The manual challenges were game-theory heavy, being less about finding the perfe
 - Game Theory
 - Position optimisation using Lagrange multipliers
 
+##Round by Round Recap
+#Round 1:
+
+
 ## Structure
 Each round contains a data capsule with relevant data for the trading day.
 - `ROUND1/` - Round 1 trading algorithms
