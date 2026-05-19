@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invest & Expand Optimiser</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  body { font-family: sans-serif; max-width: 700px; margin: 2rem auto; padding: 0 1rem; background: #fff; color: #111; }
+  h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.5rem; }
+  label { font-size: 14px; color: #555; }
+  strong { font-size: 14px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; }
+  input[type=range] { width: 100%; }
+  .card { background: #f5f5f3; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; }
+  .inner-card { background: #fff; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 8px; padding: 10px; text-align: center; }
+  .label { font-size: 11px; color: #777; margin: 0 0 4px; }
+  .big { font-size: 22px; font-weight: 500; margin: 0; }
+  .small { font-size: 11px; color: #777; margin: 4px 0 0; }
+  .med { font-size: 13px; font-weight: 500; margin: 0; }
+  .divider { border-top: 0.5px solid rgba(0,0,0,0.12); padding-top: 12px; }
+  .hint { display: flex; justify-content: space-between; margin-top: 4px; }
+  .hint span { font-size: 11px; color: #777; }
+  .chart-label { font-size: 13px; color: #777; margin: 0 0 8px; }
+  .note { font-size: 11px; color: #999; margin: 6px 0 0; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>Invest &amp; Expand — Allocation Optimiser</h1>
+
+<div class="grid-2">
+  <div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <label>Speed allocation</label>
+      <strong id="speed-val">30%</strong>
+    </div>
+    <input type="range" min="0" max="100" step="1" value="30" id="speed-slider">
+  </div>
+  <div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <label>Your speed rank</label>
+      <strong id="rank-val">rank 20 / 101</strong>
+    </div>
+    <input type="range" min="1" max="101" step="1" value="20" id="rank-slider">
+    <div class="hint">
+      <span>rank 1 → 0.90×</span>
+      <span>rank 51 → 0.50×</span>
+      <span>rank 101 → 0.10×</span>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <p class="label" style="margin-bottom:14px;">Optimal allocation (rounded to integer %)</p>
+  <div class="grid-3">
+    <div class="inner-card">
+      <p class="label">Research</p>
+      <p class="big" id="res-pct">—</p>
+      <p class="small" id="res-xirec">—</p>
+    </div>
+    <div class="inner-card">
+      <p class="label">Scale</p>
+      <p class="big" id="scl-pct">—</p>
+      <p class="small" id="scl-xirec">—</p>
+    </div>
+    <div class="inner-card">
+      <p class="label">Speed</p>
+      <p class="big" id="spd-pct">—</p>
+      <p class="small" id="spd-xirec">—</p>
+    </div>
+  </div>
+  <p class="note" id="rounding-note">—</p>
+  <div class="divider grid-4" style="margin-top:12px;">
+    <div style="text-align:center;">
+      <p class="label">Research value</p>
+      <p class="med" id="res-val">—</p>
+    </div>
+    <div style="text-align:center;">
+      <p class="label">Scale value</p>
+      <p class="med" id="scl-val">—</p>
+    </div>
+    <div style="text-align:center;">
+      <p class="label">Speed ×</p>
+      <p class="med" id="spd-mul">—</p>
+    </div>
+    <div style="text-align:center;">
+      <p class="label">Net PnL</p>
+      <p class="med" id="pnl-val">—</p>
+    </div>
+  </div>
+</div>
+
+<p class="chart-label">Net PnL vs speed allocation (at current rank, rounded allocations)</p>
+<div style="position:relative;width:100%;height:220px;">
+  <canvas id="pnlChart" role="img" aria-label="Line chart of net PnL for each integer speed allocation 0 to 100">Net PnL vs speed allocation.</canvas>
+</div>
+
+<script>
+const BUDGET = 50000;
+const LOG100 = Math.log(101);
+
+function speedMul(rank) { return 0.9 - ((rank - 1) / 100) * 0.8; }
+function research(x) { return x <= 0 ? 0 : 200000 * Math.log(1 + x) / LOG100; }
+function scale(x) { return 7 * x / 100; }
+
+function optimalRS(remaining) {
+  if (remaining <= 0) return { r: 0, s: 0 };
+  let lo = 0, hi = remaining;
+  for (let i = 0; i < 300; i++) {
+    const mid = (lo + hi) / 2;
+    if ((remaining - mid) / (1 + mid) > Math.log(1 + mid)) lo = mid; else hi = mid;
+  }
+  const r = (lo + hi) / 2;
+  return { r, s: remaining - r };
+}
+
+function roundedRS(remaining) {
+  // get exact optimum then round both to integers, keeping sum <= remaining
+  const { r, s } = optimalRS(remaining);
+  let rR = Math.round(r);
+  let sR = Math.round(s);
+  // if rounding pushed sum over remaining, trim the one that loses least value
+  if (rR + sR > remaining) {
+    const lossIfTrimR = research(rR) - research(rR - 1);
+    const lossIfTrimS = scale(sR) - scale(sR - 1);
+    if (lossIfTrimR < lossIfTrimS) rR--; else sR--;
+  }
+  // clamp to non-negative
+  rR = Math.max(0, rR);
+  sR = Math.max(0, sR);
+  return { rR, sR };
+}
+
+function compute(sp, rank) {
+  const remaining = 100 - sp;
+  const { rR, sR } = roundedRS(remaining);
+  const resVal = research(rR);
+  const sclVal = scale(sR);
+  const spdM   = speedMul(rank);
+  const totalPct = sp + rR + sR;
+  const budgetUsed = BUDGET * totalPct / 100;
+  return { rR, sR, resVal, sclVal, spdM, totalPct, net: resVal * sclVal * spdM - budgetUsed };
+}
+
+let chart;
+function buildChart(rank) {
+  const labels = [], data = [];
+  for (let sp = 0; sp <= 100; sp++) {
+    labels.push(sp + '%');
+    data.push(Math.round(compute(sp, rank).net));
+  }
+  if (chart) { chart.data.datasets[0].data = data; chart.update('none'); return; }
+  chart = new Chart(document.getElementById('pnlChart'), {
+    type: 'line',
+    data: { labels, datasets: [{ data, borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.07)', pointRadius: 0, tension: 0.3, fill: true }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Speed %', font: { size: 11 } }, ticks: { maxTicksLimit: 11 } },
+        y: { ticks: { callback: v => v.toLocaleString() } }
+      }
+    }
+  });
+}
+
+function update() {
+  const sp   = parseInt(document.getElementById('speed-slider').value);
+  const rank = parseInt(document.getElementById('rank-slider').value);
+  document.getElementById('speed-val').textContent = sp + '%';
+  document.getElementById('rank-val').textContent  = 'rank ' + rank + ' / 101';
+
+  const { rR, sR, resVal, sclVal, spdM, totalPct, net } = compute(sp, rank);
+  const toX = v => Math.round(BUDGET * v / 100).toLocaleString() + ' X';
+  const unused = 100 - totalPct;
+
+  document.getElementById('res-pct').textContent   = rR + '%';
+  document.getElementById('scl-pct').textContent   = sR + '%';
+  document.getElementById('spd-pct').textContent   = sp + '%';
+  document.getElementById('res-xirec').textContent = toX(rR);
+  document.getElementById('scl-xirec').textContent = toX(sR);
+  document.getElementById('spd-xirec').textContent = toX(sp);
+  document.getElementById('res-val').textContent   = Math.round(resVal).toLocaleString();
+  document.getElementById('scl-val').textContent   = sclVal.toFixed(3);
+  document.getElementById('spd-mul').textContent   = spdM.toFixed(2) + 'x';
+  document.getElementById('pnl-val').textContent   = Math.round(net).toLocaleString();
+  document.getElementById('rounding-note').textContent =
+    unused > 0
+      ? 'Total allocated: ' + totalPct + '% — ' + unused + '% unspent after rounding'
+      : 'Total allocated: ' + totalPct + '%';
+
+  buildChart(rank);
+}
+
+document.getElementById('speed-slider').addEventListener('input', update);
+document.getElementById('rank-slider').addEventListener('input', update);
+update();
+</script>
+</body>
+</html>
