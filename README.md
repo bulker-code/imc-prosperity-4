@@ -16,8 +16,8 @@ The manual challenges were game-theory heavy, being less about finding the perfe
 - Game Theory
 - Position optimisation using Lagrange multipliers
 
-##Round by Round Recap
-#Round 1:
+## Round by Round Recap
+# Round 1:
 
 
 ## Structure
