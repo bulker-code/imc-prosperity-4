@@ -1,0 +1,614 @@
+
+<h2 class="sr-only">Aether Crystal options simulator and optimizer v5 — fixed chooser payoff, KO put barrier, GBM dt, 100k sim cap.</h2>
+<style>
+* { box-sizing: border-box; }
+.wrap { padding: 1rem 0; font-family: var(--font-sans); color: var(--color-text-primary); }
+.tabs { display: flex; gap: 0; margin-bottom: 1.2rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.tab { padding: 7px 18px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--color-text-secondary); background: none; border-top: none; border-left: none; border-right: none; }
+.tab.active { color: var(--color-text-primary); border-bottom: 2px solid #378ADD; font-weight: 500; }
+.panel { display: none; }
+.panel.active { display: block; }
+.section-title { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px; }
+.contract-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 8px; margin-bottom: 1.2rem; }
+.cc { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 9px 11px; }
+.cc.sel { border: 1.5px solid #378ADD; }
+.cc:hover { border-color: var(--color-border-primary); }
+.cc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; }
+.cc-name { font-size: 12px; font-weight: 500; line-height: 1.3; }
+.badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.badge.call { background:#EAF3DE; color:#3B6D11; }
+.badge.put { background:#FCEBEB; color:#A32D2D; }
+.badge.exotic { background:#EEEDFE; color:#3C3489; }
+.badge.under { background:#E6F1FB; color:#185FA5; }
+.cc-meta { font-size: 10px; color: var(--color-text-secondary); margin: 3px 0; }
+.cc-prices { font-size: 11px; display: flex; gap: 8px; }
+.cc-bid { color: #3B6D11; }
+.cc-ask { color: #A32D2D; }
+.cc-ctrl { display: flex; gap: 5px; margin-top: 7px; align-items: center; }
+.cc-ctrl select, .cc-ctrl input { font-size: 11px; padding: 2px 5px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); color: var(--color-text-primary); }
+.cc-ctrl input { width: 55px; }
+.cc-ctrl button { font-size: 11px; padding: 2px 7px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); cursor: pointer; color: var(--color-text-primary); }
+.run-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0.8rem 0; }
+.run-row label { font-size: 12px; color: var(--color-text-secondary); }
+.run-row input[type=range] { width: 130px; }
+.run-row span { font-size: 12px; font-weight: 500; min-width: 40px; }
+.run-btn { padding: 7px 18px; font-size: 13px; font-weight: 500; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; }
+.run-btn:hover { background: var(--color-background-secondary); }
+.run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(115px,1fr)); gap: 8px; margin: 0.8rem 0; }
+.mc { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 8px 10px; }
+.mc-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 3px; }
+.mc-val { font-size: 18px; font-weight: 500; }
+.pos { color: #3B6D11; }
+.neg { color: #A32D2D; }
+.chart-wrap { position: relative; width: 100%; height: 200px; margin-top: 0.8rem; }
+.pos-table { width: 100%; font-size: 11px; border-collapse: collapse; margin: 6px 0 1rem; }
+.pos-table th { text-align: left; color: var(--color-text-secondary); padding: 3px 6px; border-bottom: 0.5px solid var(--color-border-tertiary); font-weight: 500; }
+.pos-table td { padding: 3px 6px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.hint { font-size: 11px; color: var(--color-text-secondary); margin-top: 5px; }
+.targets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 1rem; }
+.tgroup { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 10px 12px; }
+.tgroup-title { font-size: 10px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+.trow { display: flex; flex-direction: column; gap: 3px; margin-bottom: 7px; }
+.trow:last-child { margin-bottom: 0; }
+.trow label { font-size: 11px; color: var(--color-text-secondary); }
+.trow input { font-size: 12px; padding: 4px 7px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-primary); color: var(--color-text-primary); width: 100%; }
+.loss-display { font-size: 11px; font-weight: 500; color: #A32D2D; margin-top: 2px; }
+.prog-wrap { width: 100%; height: 5px; background: var(--color-background-secondary); border-radius: 3px; margin: 8px 0; display: none; }
+.prog-fill { height: 5px; background: #378ADD; border-radius: 3px; transition: width 0.08s; }
+.status { font-size: 11px; color: var(--color-text-secondary); min-height: 16px; margin-bottom: 6px; }
+.res-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 10px 12px; margin-bottom: 8px; }
+.res-card.top1 { border: 1.5px solid #378ADD; }
+.res-card.hard-fail { opacity: 0.6; }
+.res-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.res-rank { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); }
+.res-tag { font-size: 10px; padding: 1px 7px; border-radius: 3px; }
+.res-tag.ok { background:#EAF3DE; color:#3B6D11; }
+.res-tag.near { background:#FAEEDA; color:#854F0B; }
+.res-tag.fail { background:#FCEBEB; color:#A32D2D; }
+.mm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.mm { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 4px 8px; min-width: 85px; }
+.mm.breach { background: #FCEBEB; }
+.mm.breach .mm-l { color: #A32D2D; }
+.mm-l { font-size: 10px; color: var(--color-text-secondary); }
+.mm-v { font-size: 14px; font-weight: 500; }
+.leg-row { display: flex; gap: 5px; align-items: center; padding: 1px 0; font-size: 11px; }
+.ls { font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.ls.buy { background:#EAF3DE; color:#3B6D11; }
+.ls.sell { background:#FCEBEB; color:#A32D2D; }
+.tte-info { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 8px 12px; margin-bottom: 1rem; font-size: 12px; display: flex; gap: 16px; flex-wrap: wrap; }
+.tte-item { display: flex; flex-direction: column; gap: 1px; }
+.tte-label { font-size: 10px; color: var(--color-text-secondary); }
+.tte-val { font-weight: 500; }
+.debug-box { background: #FAEEDA; border-radius: var(--border-radius-md); padding: 8px 12px; font-size: 11px; color: #633806; margin-bottom: 1rem; display: none; }
+</style>
+
+<div class="wrap">
+  <div class="tte-info">
+    <div class="tte-item"><span class="tte-label">Standalone challenge</span><span class="tte-val">t = 0</span></div>
+    <div class="tte-item"><span class="tte-label">T+21 → TTE</span><span class="tte-val">15 trading days (60 steps)</span></div>
+    <div class="tte-item"><span class="tte-label">T+14 → TTE</span><span class="tte-val">10 trading days (40 steps)</span></div>
+    <div class="tte-item"><span class="tte-label">Chooser decision</span><span class="tte-val">10 trading days (40 steps)</span></div>
+    <div class="tte-item"><span class="tte-label">σ annualised</span><span class="tte-val">251%</span></div>
+    <div class="tte-item"><span class="tte-label">S₀</span><span class="tte-val">50</span></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('sim',this)">Simulator</button>
+    <button class="tab" onclick="switchTab('opt',this)">Optimizer</button>
+  </div>
+
+  <!-- SIMULATOR -->
+  <div id="sim" class="panel active">
+    <p class="section-title">Click a contract to add it to your portfolio</p>
+    <div class="contract-grid" id="ccGrid"></div>
+    <div id="posSection" style="display:none">
+      <p class="section-title">Active positions</p>
+      <table class="pos-table">
+        <thead><tr><th>Contract</th><th>Side</th><th>Vol</th><th>Entry price</th><th>TTE</th><th></th></tr></thead>
+        <tbody id="posTbody"></tbody>
+      </table>
+    </div>
+    <div class="run-row">
+      <label>Simulations</label>
+      <input type="range" min="500" max="100000" step="500" value="5000" id="nSimsS" oninput="document.getElementById('nSimsOut').textContent=parseInt(this.value).toLocaleString()">
+      <span id="nSimsOut">5,000</span>
+      <button class="run-btn" onclick="runSim()">Run simulation ↗</button>
+      <button class="run-btn" onclick="clearAll()" style="color:var(--color-text-secondary)">Clear</button>
+    </div>
+    <div id="debugBox" class="debug-box"></div>
+    <div class="metric-grid" id="simMetrics" style="display:none"></div>
+    <div class="chart-wrap" id="simChartWrap" style="display:none">
+      <canvas id="simChart" role="img" aria-label="Histogram of simulated PnL outcomes"></canvas>
+    </div>
+    <p class="hint" id="simHint" style="display:none"></p>
+  </div>
+
+  <!-- OPTIMIZER -->
+  <div id="opt" class="panel">
+    <p class="section-title">Targets</p>
+    <div class="targets-grid">
+      <div class="tgroup">
+        <div class="tgroup-title">Win rate</div>
+        <div class="trow"><label>Target win rate (%)</label><input type="number" id="tWin" value="75" step="1" min="1" max="99"></div>
+        <div class="trow"><label>Weight</label><input type="number" id="wWin" value="1.5" step="0.1" min="0"></div>
+      </div>
+      <div class="tgroup">
+        <div class="tgroup-title">Expected value</div>
+        <div class="trow"><label>Target mean PnL</label><input type="number" id="tEV" value="170000" step="5000"></div>
+        <div class="trow"><label>Weight</label><input type="number" id="wEV" value="1.0" step="0.1" min="0"></div>
+      </div>
+      <div class="tgroup">
+        <div class="tgroup-title">Maximum loss tolerance</div>
+        <div class="trow">
+          <label>Max acceptable loss (bottom 10%)</label>
+          <input type="number" id="tLoss" value="-500000" step="10000" oninput="updateLossDisplay()">
+          <span class="loss-display" id="lossDisplay">floor: -500,000</span>
+        </div>
+        <div class="trow"><label>Weight</label><input type="number" id="wLoss" value="2.0" step="0.1" min="0"></div>
+        <div class="hint">Scored against bottom-10% PnL. Hard breach = large penalty.</div>
+      </div>
+      <div class="tgroup">
+        <div class="tgroup-title">Search settings</div>
+        <div class="trow">
+          <label>Simulations per candidate</label>
+          <input type="range" id="nSimsO" min="500" max="100000" step="500" value="5000" oninput="document.getElementById('nSimsOOut').textContent=parseInt(this.value).toLocaleString()" style="width:100%">
+          <span id="nSimsOOut" style="font-size:12px;font-weight:500">5,000</span>
+        </div>
+        <div class="trow">
+          <label>Top results to show</label>
+          <input type="range" id="nTop" min="3" max="8" step="1" value="5" oninput="document.getElementById('nTopOut').textContent=this.value" style="width:100%">
+          <span id="nTopOut" style="font-size:12px;font-weight:500">5</span>
+        </div>
+      </div>
+    </div>
+    <div class="run-row">
+      <button class="run-btn" id="optBtn" onclick="startOpt()">Find best portfolios ↗</button>
+      <span style="font-size:11px;color:var(--color-text-secondary)">Re-run for fresh candidate pools</span>
+    </div>
+    <div class="prog-wrap" id="progWrap"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    <div class="status" id="statusLine"></div>
+    <div id="optResults"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const S0=50, SIGMA=2.51, CONTRACT_SIZE=3000;
+const STEPS_PER_DAY=4, DAYS_PER_YEAR=252;
+
+const CONTRACTS=[
+  {id:'AC',      name:'AC underlying',    type:'under',       bid:49.975,ask:50.025,maxVol:200,strike:null,barrier:null,tteDays:15,chooseDay:null,payoffAmt:null, fv:50.000},
+  {id:'AC_50_P', name:'50-P (T+21)',      type:'put',         bid:12,    ask:12.05, maxVol:50, strike:50, barrier:null,tteDays:15,chooseDay:null,payoffAmt:null, fv:12.030},
+  {id:'AC_50_C', name:'50-C (T+21)',      type:'call',        bid:12,    ask:12.05, maxVol:50, strike:50, barrier:null,tteDays:15,chooseDay:null,payoffAmt:null, fv:12.030},
+  {id:'AC_35_P', name:'35-P (T+21)',      type:'put',         bid:4.33,  ask:4.35,  maxVol:50, strike:35, barrier:null,tteDays:15,chooseDay:null,payoffAmt:null, fv:4.336},
+  {id:'AC_40_P', name:'40-P (T+21)',      type:'put',         bid:6.5,   ask:6.55,  maxVol:50, strike:40, barrier:null,tteDays:15,chooseDay:null,payoffAmt:null, fv:6.510},
+  {id:'AC_45_P', name:'45-P (T+21)',      type:'put',         bid:9.05,  ask:9.1,   maxVol:50, strike:45, barrier:null,tteDays:15,chooseDay:null,payoffAmt:null, fv:9.089},
+  {id:'AC_60_C', name:'60-C (T+21)',      type:'call',        bid:8.8,   ask:8.85,  maxVol:50, strike:60, barrier:null,tteDays:15,chooseDay:null,payoffAmt:null, fv:8.792},
+  {id:'AC_50_P2',name:'50-P (T+14)',      type:'put',         bid:9.7,   ask:9.75,  maxVol:50, strike:50, barrier:null,tteDays:10,chooseDay:null,payoffAmt:null, fv:9.872},
+  {id:'AC_50_C2',name:'50-C (T+14)',      type:'call',        bid:9.7,   ask:9.75,  maxVol:50, strike:50, barrier:null,tteDays:10,chooseDay:null,payoffAmt:null, fv:9.872},
+  {id:'AC_50_CO',name:'Chooser (T+21)',   type:'chooser',     bid:22.2,  ask:22.3,  maxVol:50, strike:50, barrier:null,tteDays:15,chooseDay:10,  payoffAmt:null, fv:21.904},
+  {id:'AC_40_BP',name:'40-BinPut (T+21)',type:'binary_put',  bid:5,     ask:5.1,   maxVol:50, strike:40, barrier:null,tteDays:15,chooseDay:null,payoffAmt:10,   fv:4.771},
+  {id:'AC_45_KO',name:'45-KO Put (T+21)',type:'knockout_put',bid:0.15,  ask:0.175, maxVol:500,strike:45, barrier:35,  tteDays:15,chooseDay:null,payoffAmt:null, fv:0.206},
+];
+
+function daysToSteps(d){return d*STEPS_PER_DAY;}
+function daysToYears(d){return d/DAYS_PER_YEAR;}
+
+function boxMuller(){
+  let u=0,v=0;
+  while(!u)u=Math.random();
+  while(!v)v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+function gbmPath(nSteps){
+  // nSteps = number of discrete steps to simulate (each step = 1/STEPS_PER_DAY of a trading day)
+  const dt = daysToYears(1) / STEPS_PER_DAY; // one step in years
+  const path=new Float64Array(nSteps+1);
+  path[0]=S0;
+  for(let i=0;i<nSteps;i++)
+    path[i+1]=path[i]*Math.exp(-0.5*SIGMA*SIGMA*dt+SIGMA*Math.sqrt(dt)*boxMuller());
+  return path;
+}
+
+// ── PAYOFF LOGIC (fixed) ────────────────────────────────────────────
+// The knock-out put:
+//   - Barrier is checked at each INTERMEDIATE step (steps 1 through expiryStep-1)
+//   - If price STRICTLY goes below the barrier at any intermediate step → knocked out (worthless)
+//   - At expiry: payoff = max(strike - ST, 0) if not knocked out, else 0
+//   - Seller: receives premium, pays intrinsic if not knocked out
+//   - Note: barrier == strike == 45 means the path must go below 45 to expire ITM,
+//     but doing so triggers the knock-out. So the seller wins almost always (tiny premium).
+//     The buyer essentially needs price to jump PAST the barrier in the final step only.
+
+function calcPayoff(c, path, side){
+  const expiryStep = daysToSteps(c.tteDays);
+
+  if(c.type === 'under'){
+    const ST = path[Math.min(expiryStep, path.length-1)];
+    const entry = side==='buy' ? c.ask : c.bid;
+    return side==='buy' ? (ST - entry) : (entry - ST);
+  }
+
+  const ST = path[Math.min(expiryStep, path.length-1)];
+  const premium = side==='buy' ? c.ask : c.bid;
+  let intrinsic = 0;
+
+  if(c.type === 'call'){
+    intrinsic = Math.max(0, ST - c.strike);
+  }
+  else if(c.type === 'put'){
+    intrinsic = Math.max(0, c.strike - ST);
+  }
+  else if(c.type === 'chooser'){
+    // At the choose date (step chooseDay*STEPS_PER_DAY), holder decides call or put.
+    // They pick whichever has higher Black-Scholes value given remaining TTE.
+    // Simplified: use intrinsic value at the choose date to decide direction,
+    // then apply that choice to the final price at expiry.
+    // Proper: at chooseDate the holder picks call if S_choose >= K (call is worth >= put for ATM),
+    // else put. For ATM at-the-money chooser: pick call if S_choose > K, put if S_choose < K, either if equal.
+    const chooseStep = c.chooseDay * STEPS_PER_DAY;
+    const S_choose = path[Math.min(chooseStep, path.length-1)];
+    // With zero drift, call value = put value at ATM. Choose based on moneyness at choose date.
+    if(S_choose >= c.strike){
+      intrinsic = Math.max(0, ST - c.strike); // becomes a call
+    } else {
+      intrinsic = Math.max(0, c.strike - ST); // becomes a put
+    }
+  }
+  else if(c.type === 'binary_put'){
+    intrinsic = ST < c.strike ? (c.payoffAmt || 10) : 0;
+  }
+  else if(c.type === 'knockout_put'){
+    // Check barrier breach at ALL steps from 1 through expiry (inclusive).
+    // Breach = price strictly below barrier at any step.
+    let knockedOut = false;
+    const checkUntil = Math.min(expiryStep, path.length-1);
+    for(let i = 1; i <= checkUntil; i++){
+      if(path[i] < c.barrier){
+        knockedOut = true;
+        break;
+      }
+    }
+    if(!knockedOut){
+      intrinsic = Math.max(0, c.strike - ST);
+    }
+    // If knockedOut: intrinsic stays 0
+  }
+
+  return side==='buy' ? (intrinsic - premium) : (premium - intrinsic);
+}
+
+// ── SIMULATOR ──────────────────────────────────────────────────────
+const positions={};
+let simChartInst=null;
+
+function switchTab(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function badgeClass(t){return {call:'call',put:'put',under:'under',chooser:'exotic',binary_put:'exotic',knockout_put:'exotic'}[t]||'exotic';}
+function badgeLabel(t){return {call:'call',put:'put',under:'underlying',chooser:'chooser',binary_put:'binary put',knockout_put:'knock-out put'}[t]||t;}
+
+function renderContracts(){
+  const g=document.getElementById('ccGrid');
+  g.innerHTML='';
+  CONTRACTS.forEach(c=>{
+    const pos=positions[c.id];
+    const div=document.createElement('div');
+    div.className='cc'+(pos?' sel':'');
+    div.innerHTML=`
+      <div class="cc-top"><span class="cc-name">${c.name}</span><span class="badge ${badgeClass(c.type)}">${badgeLabel(c.type)}</span></div>
+      <div class="cc-meta">TTE: ${c.tteDays}d · ${daysToSteps(c.tteDays)} steps${c.strike!=null?' · K='+c.strike:''}${c.barrier!=null?' · B='+c.barrier:''}</div>
+      <div class="cc-prices"><span class="cc-bid">bid ${c.bid}</span><span class="cc-ask">ask ${c.ask}</span><span style="color:var(--color-text-secondary);font-size:10px">max ${c.maxVol}</span></div>
+      ${c.fv!=null&&c.type!=='under'?`<div style="font-size:10px;margin:2px 0;display:flex;gap:8px"><span style="color:var(--color-text-secondary)">FV ${c.fv.toFixed(3)}</span><span style="color:${(c.fv-(c.bid+c.ask)/2)>=0?'#3B6D11':'#A32D2D'};font-weight:500">buy edge ${((c.fv-c.ask)>=0?'+':'')}${(c.fv-c.ask).toFixed(3)}</span></div>`:''}
+      <div class="cc-ctrl">
+        <select id="sd_${c.id}"><option value="buy"${pos&&pos.side==='buy'?' selected':''}>Buy</option><option value="sell"${pos&&pos.side==='sell'?' selected':''}>Sell</option></select>
+        <input type="number" id="vl_${c.id}" min="1" max="${c.maxVol}" value="${pos?pos.vol:Math.min(10,c.maxVol)}">
+        <button onclick="togglePos('${c.id}')">${pos?'Remove':'Add'}</button>
+      </div>`;
+    g.appendChild(div);
+  });
+}
+
+function togglePos(id){
+  if(positions[id]){delete positions[id];}
+  else{
+    const c=CONTRACTS.find(x=>x.id===id);
+    const side=document.getElementById('sd_'+id).value;
+    const vol=Math.min(parseInt(document.getElementById('vl_'+id).value)||1,c.maxVol);
+    positions[id]={...c,side,vol};
+  }
+  renderContracts();renderPosTable();
+}
+
+function renderPosTable(){
+  const keys=Object.keys(positions);
+  const sec=document.getElementById('posSection');
+  if(!keys.length){sec.style.display='none';return;}
+  sec.style.display='';
+  const tb=document.getElementById('posTbody');
+  tb.innerHTML='';
+  keys.forEach(id=>{
+    const p=positions[id];
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${p.name}</td><td style="color:${p.side==='buy'?'#3B6D11':'#A32D2D'}">${p.side}</td><td>${p.vol}</td><td>${p.side==='buy'?p.ask:p.bid}</td><td>${p.tteDays}d</td><td><button onclick="togglePos('${id}')" style="font-size:10px;padding:1px 5px;border:0.5px solid var(--color-border-secondary);border-radius:3px;background:transparent;cursor:pointer;color:var(--color-text-secondary)">×</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function clearAll(){
+  Object.keys(positions).forEach(k=>delete positions[k]);
+  renderContracts();renderPosTable();
+  document.getElementById('simMetrics').style.display='none';
+  document.getElementById('simChartWrap').style.display='none';
+  document.getElementById('simHint').style.display='none';
+  document.getElementById('debugBox').style.display='none';
+}
+
+function runSim(){
+  const keys=Object.keys(positions);
+  if(!keys.length){alert('Add at least one contract.');return;}
+  const nSims=parseInt(document.getElementById('nSimsS').value);
+  const maxSteps=daysToSteps(15); // 60 steps = 15 trading days (3 weeks × 5 trading days)
+  const results=[];
+
+  // Debug counters for KO put
+  let koCount=0, koInMoneyCount=0, noKoInMoneyCount=0;
+  const hasKO=keys.some(id=>positions[id].type==='knockout_put');
+
+  for(let i=0;i<nSims;i++){
+    const path=gbmPath(maxSteps);
+    let pnl=0;
+    keys.forEach(id=>{
+      const p=positions[id];
+      pnl+=calcPayoff(p,path,p.side)*p.vol*CONTRACT_SIZE;
+      // debug tracking
+      if(hasKO && p.type==='knockout_put'){
+        const expiryStep=daysToSteps(p.tteDays);
+        const ST=path[Math.min(expiryStep,path.length-1)];
+        let ko=false;
+        for(let j=1;j<=Math.min(expiryStep,path.length-1);j++){if(path[j]<p.barrier){ko=true;break;}}        if(ko) koCount++;
+        else if(ST<p.strike) noKoInMoneyCount++;
+      }
+    });
+    results.push(pnl);
+  }
+
+  results.sort((a,b)=>a-b);
+  const n=results.length;
+  const mean=results.reduce((a,b)=>a+b,0)/n;
+  const wins=results.filter(x=>x>0).length;
+  const p10=results[Math.floor(n*0.1)];
+  const p90=results[Math.floor(n*0.9)];
+  const med=results[Math.floor(n*0.5)];
+
+  // Show debug for KO
+  if(hasKO){
+    const db=document.getElementById('debugBox');
+    db.style.display='block';
+    db.innerHTML=`<strong>Knock-out put breakdown (${nSims.toLocaleString()} sims):</strong>
+      · Knocked out (barrier breached before expiry): <strong>${koCount} (${(koCount/nSims*100).toFixed(1)}%)</strong>
+      · Not knocked out + expired ITM (seller loses): <strong>${noKoInMoneyCount} (${(noKoInMoneyCount/nSims*100).toFixed(1)}%)</strong>
+      · Not knocked out + expired OTM (seller keeps premium): <strong>${nSims-koCount-noKoInMoneyCount} (${((nSims-koCount-noKoInMoneyCount)/nSims*100).toFixed(1)}%)</strong>
+      <br><em>Strike=45, barrier=35. Option pays max(45-ST,0) at expiry unless price ever touches below 35 during the life of the contract.</em>`;
+  } else {
+    document.getElementById('debugBox').style.display='none';
+  }
+
+  const mc=document.getElementById('simMetrics');
+  mc.style.display='grid';
+  const fmt=v=>(v>=0?'+':'')+Math.round(v).toLocaleString();
+  const cls=v=>v>0?'pos':v<0?'neg':'';
+  mc.innerHTML=`
+    <div class="mc"><div class="mc-label">Win rate</div><div class="mc-val ${wins/n>0.5?'pos':'neg'}">${(wins/n*100).toFixed(1)}%</div></div>
+    <div class="mc"><div class="mc-label">Mean PnL</div><div class="mc-val ${cls(mean)}">${fmt(mean)}</div></div>
+    <div class="mc"><div class="mc-label">Median PnL</div><div class="mc-val ${cls(med)}">${fmt(med)}</div></div>
+    <div class="mc"><div class="mc-label">Bottom 10%</div><div class="mc-val ${cls(p10)}">${fmt(p10)}</div></div>
+    <div class="mc"><div class="mc-label">Top 10%</div><div class="mc-val ${cls(p90)}">${fmt(p90)}</div></div>
+    <div class="mc"><div class="mc-label">Worst case</div><div class="mc-val ${cls(results[0])}">${fmt(results[0])}</div></div>
+    <div class="mc"><div class="mc-label">Best case</div><div class="mc-val pos">${fmt(results[n-1])}</div></div>`;
+
+  const bins=50,lo=results[0],hi=results[n-1],bw=(hi-lo)/bins||1;
+  const counts=new Array(bins).fill(0);
+  results.forEach(v=>{let b=Math.min(Math.floor((v-lo)/bw),bins-1);counts[b]++;});
+  const labels=counts.map((_,i)=>{const mid=lo+(i+0.5)*bw;return(mid>=0?'+':'')+Math.round(mid/1000)+'k';});
+  const colors=counts.map((_,i)=>(lo+(i+0.5)*bw)>=0?'rgba(99,153,34,0.75)':'rgba(226,75,74,0.75)');
+
+  document.getElementById('simChartWrap').style.display='';
+  const hint=document.getElementById('simHint');
+  hint.style.display='';hint.textContent=`${nSims.toLocaleString()} simulations · σ=251% · standalone (t=0) · T+21=15 trading days, T+14=10 trading days · contract size 3,000`;
+  if(simChartInst) simChartInst.destroy();
+  simChartInst=new Chart(document.getElementById('simChart'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'Sims',data:counts,backgroundColor:colors,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{autoSkip:true,maxTicksLimit:12,color:'#888',font:{size:10}},grid:{display:false}},
+              y:{ticks:{color:'#888',font:{size:10}},grid:{color:'rgba(128,128,128,0.12)'}}}}
+  });
+}
+
+// ── OPTIMIZER ──────────────────────────────────────────────────────
+function updateLossDisplay(){
+  const v=parseFloat(document.getElementById('tLoss').value)||0;
+  document.getElementById('lossDisplay').textContent='floor: '+(v>=0?'+':'')+Math.round(v).toLocaleString();
+}
+
+function evalPortfolio(legs,paths){
+  const pnls=[];
+  paths.forEach(path=>{
+    let t=0;
+    legs.forEach(l=>{t+=calcPayoff(l.c,path,l.side)*l.vol*CONTRACT_SIZE;});
+    pnls.push(t);
+  });
+  pnls.sort((a,b)=>a-b);
+  const n=pnls.length;
+  return{
+    mean:pnls.reduce((a,b)=>a+b,0)/n,
+    winRate:pnls.filter(x=>x>0).length/n*100,
+    p10:pnls[Math.floor(n*0.1)],
+    p90:pnls[Math.floor(n*0.9)],
+    worst:pnls[0],
+  };
+}
+
+function scorePort(s,tWin,tEV,wWin,wEV,tLoss,wLoss){
+  const winErr=Math.abs(s.winRate-tWin)/tWin;
+  const evErr=Math.abs(s.mean-tEV)/Math.max(Math.abs(tEV),1000);
+  let lossPenalty=0;
+  if(s.p10<tLoss){
+    const breach=Math.abs(s.p10-tLoss)/Math.max(Math.abs(tLoss),1000);
+    lossPenalty=breach*3;
+  }
+  return -(wWin*winErr + wEV*evErr + wLoss*lossPenalty);
+}
+
+const SIDES=['buy','sell'];
+
+function generateCandidates(){
+  const cands=[];
+  CONTRACTS.forEach(c=>{
+    SIDES.forEach(side=>{
+      [0.25,0.5,0.75,1.0].forEach(f=>{
+        const vol=Math.max(1,Math.round(c.maxVol*f));
+        cands.push([{c,side,vol}]);
+      });
+    });
+  });
+  for(let i=0;i<CONTRACTS.length;i++){
+    for(let j=i;j<CONTRACTS.length;j++){
+      SIDES.forEach(s1=>{SIDES.forEach(s2=>{
+        [0.5,1.0].forEach(f=>{
+          cands.push([
+            {c:CONTRACTS[i],side:s1,vol:Math.max(1,Math.round(CONTRACTS[i].maxVol*f))},
+            {c:CONTRACTS[j],side:s2,vol:Math.max(1,Math.round(CONTRACTS[j].maxVol*f))}
+          ]);
+        });
+      });});
+    }
+  }
+  for(let k=0;k<300;k++){
+    const legs=[];
+    for(let l=0;l<3;l++){
+      const c=CONTRACTS[Math.floor(Math.random()*CONTRACTS.length)];
+      const side=SIDES[Math.floor(Math.random()*2)];
+      const vol=Math.max(1,Math.round(c.maxVol*(0.25+Math.random()*0.75)));
+      legs.push({c,side,vol});
+    }
+    cands.push(legs);
+  }
+  for(let i=cands.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cands[i],cands[j]]=[cands[j],cands[i]];}
+  return cands;
+}
+
+let optRunning=false;
+
+async function startOpt(){
+  if(optRunning)return;
+  optRunning=true;
+  const btn=document.getElementById('optBtn');
+  btn.disabled=true;btn.textContent='Running…';
+
+  const tWin=parseFloat(document.getElementById('tWin').value)||75;
+  const tEV=parseFloat(document.getElementById('tEV').value)||170000;
+  const wWin=parseFloat(document.getElementById('wWin').value)||1.5;
+  const wEV=parseFloat(document.getElementById('wEV').value)||1.0;
+  const tLoss=parseFloat(document.getElementById('tLoss').value)||-500000;
+  const wLoss=parseFloat(document.getElementById('wLoss').value)||2.0;
+  const nSims=parseInt(document.getElementById('nSimsO').value)||1500;
+  const nTop=parseInt(document.getElementById('nTop').value)||5;
+
+  document.getElementById('progWrap').style.display='block';
+  document.getElementById('optResults').innerHTML='';
+  const status=document.getElementById('statusLine');
+
+  status.textContent=`Generating ${nSims.toLocaleString()} paths…`;
+  await sleep(0);
+  const maxSteps=daysToSteps(15); // 60 steps = 15 trading days (3 weeks × 5 trading days)
+  const paths=[];
+  for(let i=0;i<nSims;i++) paths.push(gbmPath(maxSteps));
+
+  const cands=generateCandidates();
+  status.textContent=`Evaluating ${cands.length} candidate portfolios…`;
+  await sleep(0);
+
+  const scored=[];
+  const CHUNK=60;
+  for(let i=0;i<cands.length;i+=CHUNK){
+    cands.slice(i,i+CHUNK).forEach(legs=>{
+      const s=evalPortfolio(legs,paths);
+      scored.push({legs,stats:s,sc:scorePort(s,tWin,tEV,wWin,wEV,tLoss,wLoss)});
+    });
+    document.getElementById('progFill').style.width=Math.min(100,Math.round((i+CHUNK)/cands.length*100))+'%';
+    status.textContent=`Evaluated ${Math.min(i+CHUNK,cands.length)} / ${cands.length}…`;
+    await sleep(0);
+  }
+
+  scored.sort((a,b)=>b.sc-a.sc);
+  const top=scored.slice(0,nTop);
+
+  status.textContent=`Re-validating top ${nTop} with higher accuracy…`;
+  await sleep(0);
+  const fineN=nSims*4; // no cap — scales with user's chosen sim count
+  const finePaths=[];
+  for(let i=0;i<fineN;i++) finePaths.push(gbmPath(maxSteps));
+  top.forEach(r=>{r.stats=evalPortfolio(r.legs,finePaths);});
+  top.sort((a,b)=>scorePort(b.stats,tWin,tEV,wWin,wEV,tLoss,wLoss)-scorePort(a.stats,tWin,tEV,wWin,wEV,tLoss,wLoss));
+
+  document.getElementById('progFill').style.width='100%';
+  status.textContent=`Done · ${cands.length} candidates · top ${nTop} re-validated with ${fineN.toLocaleString()} sims`;
+  renderOptResults(top,tWin,tEV,tLoss);
+  optRunning=false;
+  btn.disabled=false;btn.textContent='Find best portfolios ↗';
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+function renderOptResults(top,tWin,tEV,tLoss){
+  const div=document.getElementById('optResults');
+  div.innerHTML=`<p class="section-title" style="margin-top:0.8rem">Top portfolios</p>`;
+  top.forEach((r,i)=>{
+    const s=r.stats;
+    const winOk=Math.abs(s.winRate-tWin)<8;
+    const evOk=Math.abs(s.mean-tEV)/Math.max(Math.abs(tEV),1)<0.3;
+    const lossOk=s.p10>=tLoss;
+    const isOk=winOk&&evOk&&lossOk;
+    const isNear=!isOk&&(winOk||evOk)&&lossOk;
+    const tagClass=isOk?'ok':isNear?'near':'fail';
+    const tagLabel=isOk?'✓ on target':lossOk?'near target':'✗ loss breach';
+
+    const card=document.createElement('div');
+    card.className='res-card'+(i===0&&lossOk?' top1':'')+(lossOk?'':' hard-fail');
+
+    const legs=r.legs.map(l=>`
+      <div class="leg-row">
+        <span class="ls ${l.side}">${l.side}</span>
+        <span>${l.vol}× ${l.c.name}</span>
+        <span style="color:var(--color-text-secondary);font-size:10px">@ ${l.side==='buy'?l.c.ask:l.c.bid}</span>
+      </div>`).join('');
+
+    card.innerHTML=`
+      <div class="res-head">
+        <span class="res-rank">#${i+1}${i===0&&lossOk?' · best match':''}</span>
+        <span class="res-tag ${tagClass}">${tagLabel}</span>
+      </div>
+      <div class="mm-row">
+        <div class="mm"><div class="mm-l">Win rate</div><div class="mm-v ${s.winRate>=tWin?'pos':'neg'}">${s.winRate.toFixed(1)}%</div></div>
+        <div class="mm"><div class="mm-l">Mean PnL</div><div class="mm-v ${s.mean>0?'pos':'neg'}">${s.mean>=0?'+':''}${Math.round(s.mean).toLocaleString()}</div></div>
+        <div class="mm"><div class="mm-l">Bottom 10%</div><div class="mm-v ${s.p10>=tLoss?'pos':'neg'}">${s.p10>=0?'+':''}${Math.round(s.p10).toLocaleString()}</div></div>
+        <div class="mm ${!lossOk?'breach':''}"><div class="mm-l">Loss floor${!lossOk?' ⚠':''}</div><div class="mm-v ${lossOk?'pos':'neg'}">${tLoss>=0?'+':''}${Math.round(tLoss).toLocaleString()}</div></div>
+        <div class="mm"><div class="mm-l">Top 10%</div><div class="mm-v pos">+${Math.round(s.p90).toLocaleString()}</div></div>
+      </div>
+      <div>${legs}</div>`;
+    div.appendChild(card);
+  });
+  div.innerHTML+=`<p class="hint" style="margin-top:6px">Loss tolerance scored against bottom-10% PnL. "✗ loss breach" = exceeds your floor. Re-run for fresh random candidates.</p>`;
+}
+
+updateLossDisplay();
+renderContracts();
+</script>
