@@ -23,7 +23,7 @@ Finals has begun and the new main products are "VELVETFRUIT_EXTRACT" and "HYDROG
 
 ### Round 5:
 
-## Structure
+## Repo Structure
 Each round contains a data capsule with relevant data for the trading day, accompanied by a data_analysis file so that the data can be interpreted and strategies could be developed. It also has a mock datamodel file, allowing the python files to be run in shell. 
 - `ROUND1/` - Round 1 trading algorithms and manual tools
 - `ROUND2/` - Round 2 trading algorithms and manual tools
