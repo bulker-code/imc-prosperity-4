@@ -5,7 +5,6 @@ import numpy as np
 
 class Trader:
     
-    
     def __init__(self):
         self.LIMIT = {
             "INTARIAN_PEPPER_ROOT": 80,
@@ -18,6 +17,7 @@ class Trader:
         result = {}
         
         product = "INTARIAN_PEPPER_ROOT"
+        # BUY AND HOLD STRATEGY TO CAPTURE UPWARD TREND ON PEPPER
 
         if product in state.order_depths:
             order_depth: OrderDepth = state.order_depths[product]
@@ -39,6 +39,7 @@ class Trader:
             result[product] = orders
         
         product = "ASH_COATED_OSMIUM"
+        # MARKET-MAKING FOR OSMIUM
 
         if product in state.order_depths:
             order_depth: OrderDepth = state.order_depths[product]
@@ -47,7 +48,7 @@ class Trader:
             if not order_depth.buy_orders or not order_depth.sell_orders:
                 return result, 1, ""
 
-            # --- Get best prices ---
+            # Find best prices
             best_bid = max(order_depth.buy_orders.keys())
             best_ask = min(order_depth.sell_orders.keys())
 
@@ -58,11 +59,11 @@ class Trader:
             position = state.position.get(product, 0)
             limit = self.LIMIT[product]
 
-            # --- Parameters ---
+            # Parameters
             ORDER_SIZE = 13
-            MIN_SPREAD = 2   # only trade if spread wide enough
+            MIN_SPREAD = 2
 
-            # --- Inventory skew (very important) ---
+            # Inventory Skew
             skew = 0
             if position > 40:
                 skew = -1   # push prices down → encourage selling
@@ -71,7 +72,7 @@ class Trader:
 
             print(state.observations)
             
-            # --- Only market make if spread is good ---
+            # Only market make if spread is good
             if spread >= MIN_SPREAD:
                 buy_qty = min(ORDER_SIZE, limit - position)
                 sell_qty = min(ORDER_SIZE, limit + position)
