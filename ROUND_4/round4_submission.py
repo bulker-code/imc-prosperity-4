@@ -1,7 +1,7 @@
 """
 IMC Prosperity 4 – Round 3 | VELVETFRUIT_EXTRACT
 =================================================
-Strategy: pure zscore mean reversion.
+Strategy: zscore mean reversion with EMA fair value
 
 Key observations
 -----------------
