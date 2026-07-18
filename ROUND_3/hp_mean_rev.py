@@ -24,6 +24,8 @@ Additional "take" layer
 Position limits: HYDROGEL_PACK = 200
 """
 
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from datamodel import OrderDepth, TradingState, Order
 from typing import List, Dict
 import json

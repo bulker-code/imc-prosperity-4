@@ -21,6 +21,8 @@ Strategy
 - Conviction sizing between thresholds
 """
 
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from datamodel import OrderDepth, TradingState, Order
 from typing import List
 import json
